@@ -284,7 +284,34 @@ async function appelerGemini(promptText, resultContainerId) {
     }
 }
 
-// Bouton Générer Alimentation
+// === NOUVEAU : Bouton Générer Entraînement Sportif ===
+const btnGenerateWorkout = document.getElementById('btnGenerateWorkout');
+if (btnGenerateWorkout) {
+    btnGenerateWorkout.addEventListener('click', () => {
+        const poids = document.getElementById('inputPoids').value;
+        const objectif = document.getElementById('inputObjectif').value;
+        const precision = document.getElementById('inputPrecision').value;
+        const sante = document.getElementById('inputSante').value;
+        const materiel = document.getElementById('inputMateriel').value;
+        const requeteWorkout = document.getElementById('inputRequeteWorkout').value;
+
+        // Construction du contexte pour l'IA (Ciblé sur le sport)
+        let prompt = `Tu es un coach sportif expert.\n`;
+        prompt += `Voici mon profil actuel :\n`;
+        prompt += `- Poids : ${poids ? poids + ' kg' : 'Non renseigné'}\n`;
+        prompt += `- Objectif principal : ${objectif}\n`;
+        if (precision) prompt += `- Précision sur l'objectif : ${precision}\n`;
+        if (sante) prompt += `- Soucis de santé / Douleurs à prendre en compte : ${sante}\n`;
+        if (materiel) prompt += `- Matériel à disposition : ${materiel}\n`;
+
+        prompt += `\nMa demande d'entraînement ou d'ajustement est la suivante : ${requeteWorkout || 'Génère-moi un programme sportif adapté pour cette semaine.'}\n`;
+        prompt += `\nÀ partir de ces informations, crée un programme d'exercices structuré. Propose des séances pour la semaine en détaillant les exercices (séries, répétitions) tout en respectant scrupuleusement mon matériel et mes douleurs. Formate ta réponse de manière claire et motivante.`;
+
+        appelerGemini(prompt, 'workoutResult');
+    });
+}
+
+// Bouton Générer Alimentation (Existant)
 const btnGenerateNutrition = document.getElementById('btnGenerateNutrition');
 if (btnGenerateNutrition) {
     btnGenerateNutrition.addEventListener('click', () => {
@@ -292,7 +319,6 @@ if (btnGenerateNutrition) {
         const precision = document.getElementById('inputPrecision').value;
         const requeteIA = document.getElementById('inputRequeteIA').value;
         
-        // Construction du contexte pour l'IA
         let prompt = `Tu es un diététicien expert. Mon objectif principal est : ${objectif} (${precision}).\n`;
         
         if (famille.length > 0) {
