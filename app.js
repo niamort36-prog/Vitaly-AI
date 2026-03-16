@@ -26,7 +26,7 @@ async function sauvegarderDonnees(champ, donnees) {
 }
 
 // ==========================================
-// 2. GESTION DE L'AUTHENTIFICATION (MODAL)
+// 2. GESTION DE L'AUTHENTIFICATION
 // ==========================================
 const authBtn = document.getElementById('authBtn');
 const authModal = document.getElementById('authModal');
@@ -245,8 +245,8 @@ window.modifierAliment = function(index) {
 // 6. INTÉGRATION API GEMINI (LE CERVEAU)
 // ==========================================
 
-// Fonction générique pour appeler l'API
-async function appelerGemini(promptText, resultContainerId) {
+// Fonction générique modifiée : isHTML permet de ne pas casser le design si l'IA renvoie du vrai code
+async function appelerGemini(promptText, resultContainerId, isHTML = false) {
     const apiKey = document.getElementById('inputApiKey').value;
     const container = document.getElementById(resultContainerId);
 
@@ -256,7 +256,7 @@ async function appelerGemini(promptText, resultContainerId) {
     }
 
     container.style.display = "block";
-    container.innerHTML = "<p><em>L'IA réfléchit à votre demande... ⏳</em></p>";
+    container.innerHTML = "<p><em>L'IA conçoit votre programme sur mesure... ⏳</em></p>";
 
     try {
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
@@ -272,19 +272,24 @@ async function appelerGemini(promptText, resultContainerId) {
         const data = await response.json();
         let resultatTexte = data.candidates[0].content.parts[0].text;
         
-        // Formatage basique (transformer le Markdown en HTML pour l'affichage)
-        resultatTexte = resultatTexte.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'); // Gras
-        resultatTexte = resultatTexte.replace(/\*(.*?)\*/g, '<em>$1</em>'); // Italique
-        resultatTexte = resultatTexte.replace(/\n/g, '<br>'); // Sauts de ligne
-
-        container.innerHTML = `<div style="line-height: 1.6; padding: 10px;">${resultatTexte}</div>`;
+        if (isHTML) {
+            // Nettoyage des balises markdown si l'IA en met autour du code HTML
+            resultatTexte = resultatTexte.replace(/```html\n?/g, '').replace(/```\n?/g, '');
+            container.innerHTML = resultatTexte;
+        } else {
+            // Formatage classique pour le texte (comme les menus d'alimentation)
+            resultatTexte = resultatTexte.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'); 
+            resultatTexte = resultatTexte.replace(/\*(.*?)\*/g, '<em>$1</em>'); 
+            resultatTexte = resultatTexte.replace(/\n/g, '<br>'); 
+            container.innerHTML = `<div style="line-height: 1.6; padding: 10px;">${resultatTexte}</div>`;
+        }
 
     } catch (error) {
         container.innerHTML = `<p style="color: #E74C3C;"><strong>Erreur :</strong> ${error.message}</p>`;
     }
 }
 
-// === NOUVEAU : Bouton Générer Entraînement Sportif ===
+// Bouton Générer Entraînement Sportif
 const btnGenerateWorkout = document.getElementById('btnGenerateWorkout');
 if (btnGenerateWorkout) {
     btnGenerateWorkout.addEventListener('click', () => {
@@ -295,7 +300,6 @@ if (btnGenerateWorkout) {
         const materiel = document.getElementById('inputMateriel').value;
         const requeteWorkout = document.getElementById('inputRequeteWorkout').value;
 
-        // Construction du contexte pour l'IA (Ciblé sur le sport)
         let prompt = `Tu es un coach sportif expert.\n`;
         prompt += `Voici mon profil actuel :\n`;
         prompt += `- Poids : ${poids ? poids + ' kg' : 'Non renseigné'}\n`;
@@ -304,10 +308,35 @@ if (btnGenerateWorkout) {
         if (sante) prompt += `- Soucis de santé / Douleurs à prendre en compte : ${sante}\n`;
         if (materiel) prompt += `- Matériel à disposition : ${materiel}\n`;
 
-        prompt += `\nMa demande d'entraînement ou d'ajustement est la suivante : ${requeteWorkout || 'Génère-moi un programme sportif adapté pour cette semaine.'}\n`;
-        prompt += `\nÀ partir de ces informations, crée un programme d'exercices structuré. Propose des séances pour la semaine en détaillant les exercices (séries, répétitions) tout en respectant scrupuleusement mon matériel et mes douleurs. Formate ta réponse de manière claire et motivante.`;
+        prompt += `\nMa demande d'entraînement ou d'ajustement est la suivante : ${requeteWorkout || 'Génère-moi un programme sportif adapté.'}\n`;
+        
+        // NOUVEAU : On force Gemini à répondre avec NOTRE code HTML
+        prompt += `\nÀ partir de ces informations, crée un programme d'exercices structuré pour 2 semaines (Semaine 1 - Actuelle et Semaine 2 - À venir). `;
+        prompt += `\nIMPORTANT ET OBLIGATOIRE : Tu dois répondre UNIQUEMENT avec du code HTML formaté exactement comme ceci (n'ajoute aucun texte avant ou après, pas de balise markdown) :
+<div class="week-section">
+    <h3>Semaine 1 - Actuelle</h3>
+    <div class="card">
+        <h4>Lundi</h4>
+        <ul class="checklist">
+            <li>
+                <input type="checkbox" id="gen_s1_lundi_ex1"> 
+                <label for="gen_s1_lundi_ex1">Nom de l'exercice (Séries x Répétitions)</label>
+                <details class="ex-details">
+                    <summary>Voir les détails</summary>
+                    <p><strong>Description :</strong> Courte description de l'exécution.</p>
+                    <p><a href="https://www.youtube.com/results?search_query=nom+exercice" target="_blank">📺 Voir une vidéo d'exemple sur YouTube</a></p>
+                </details>
+            </li>
+            </ul>
+    </div>
+    </div>
+<div class="week-section">
+    <h3>Semaine 2 - À venir</h3>
+    </div>
+Veille à générer des IDs uniques pour chaque checkbox (ex: gen_s1_mardi_ex2).`;
 
-        appelerGemini(prompt, 'workoutResult');
+        // L'appel utilise 'programContainer' et 'true' pour dire que c'est du HTML
+        appelerGemini(prompt, 'programContainer', true);
     });
 }
 
@@ -334,6 +363,7 @@ if (btnGenerateNutrition) {
         prompt += `\nMa demande spécifique est : ${requeteIA || 'Propose-moi un menu équilibré pour la semaine.'}\n`;
         prompt += `\nÀ partir de ces informations, génère : \n1. Un menu pour chaque jour de la semaine (matin, midi, soir).\n2. Une liste de courses stricte pour compléter ce qui me manque dans mon inventaire afin de réaliser ces repas. Formate ta réponse de manière claire.`;
 
-        appelerGemini(prompt, 'menuResult');
+        // L'appel utilise 'false' car on s'attend à du texte normal
+        appelerGemini(prompt, 'menuResult', false);
     });
 }
