@@ -115,6 +115,8 @@ onAuthStateChanged(auth, async (user) => {
 
             if(data.famille) { famille = data.famille; afficherFamille(); }
             if(data.inventaire) { inventaire = data.inventaire; afficherFrigo(); }
+            // NOUVEAU : Récupération de l'historique
+            if(data.historique) { historique = data.historique; afficherHistorique(); }
         }
     } else {
         if (authBtn) {
@@ -125,6 +127,7 @@ onAuthStateChanged(auth, async (user) => {
         
         famille = []; afficherFamille();
         inventaire = []; afficherFrigo();
+        historique = {}; afficherHistorique();
         const profilFormEl = document.getElementById('profilForm');
         if (profilFormEl) profilFormEl.reset();
         const profilDisplayEl = document.getElementById('profilDisplay');
@@ -145,11 +148,120 @@ navButtons.forEach(btn => {
         btn.classList.add('active');
         const target = document.getElementById(btn.getAttribute('data-target'));
         if (target) target.classList.add('active');
+        
+        // NOUVEAU : Redessiner le graphique si on clique sur l'onglet Historique
+        if(btn.getAttribute('data-target') === 'history') {
+            afficherHistorique();
+        }
     });
 });
 
 // ==========================================
-// 4. LOGIQUE DU PROFIL 
+// NOUVEAU : 4. LOGIQUE DE L'HISTORIQUE (Poids & Exercices)
+// ==========================================
+let historique = {}; // Format: { "YYYY-MM-DD": { poids: 75, exercices: ["Pompes", "Gainage"] } }
+let weightChartInstance = null; // Pour stocker le graphique Chart.js
+
+function afficherHistorique() {
+    const dates = Object.keys(historique).sort(); // Trie les dates par ordre chronologique
+    
+    // 1. Mise à jour du graphique de poids
+    const ctx = document.getElementById('weightChart');
+    if (ctx) {
+        // Préparer les données
+        const labels = [];
+        const dataPoids = [];
+        
+        dates.forEach(date => {
+            if (historique[date].poids) {
+                labels.push(date);
+                dataPoids.push(historique[date].poids);
+            }
+        });
+
+        // Si un graphique existe déjà, on le détruit avant de le redessiner
+        if (weightChartInstance) {
+            weightChartInstance.destroy();
+        }
+
+        weightChartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Évolution du Poids (kg)',
+                    data: dataPoids,
+                    borderColor: '#2ECC71',
+                    backgroundColor: 'rgba(46, 204, 113, 0.2)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.3 // Courbe légèrement arrondie
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: { beginAtZero: false } // Pour ne pas écraser la courbe
+                }
+            }
+        });
+    }
+
+    // 2. Mise à jour de la liste des exercices validés
+    const listContainer = document.getElementById('exerciseHistoryList');
+    if (listContainer) {
+        if (dates.length === 0) {
+            listContainer.innerHTML = '<p><em>Aucun historique pour le moment.</em></p>';
+            return;
+        }
+
+        let html = '';
+        // On affiche du plus récent au plus ancien
+        [...dates].reverse().forEach(date => {
+            const exos = historique[date].exercices || [];
+            if (exos.length > 0) {
+                html += `<h4 style="color: var(--primary-color); border-bottom: 1px solid #eee; padding-bottom: 5px;">📅 ${date}</h4><ul class="checklist">`;
+                exos.forEach(ex => html += `<li>✅ ${ex}</li>`);
+                html += `</ul>`;
+            }
+        });
+        
+        listContainer.innerHTML = html || '<p><em>Aucun exercice validé pour le moment.</em></p>';
+    }
+}
+
+// ÉCOUTEUR GLOBAL POUR LES EXERCICES COCHÉS
+const programContainer = document.getElementById('programContainer');
+if (programContainer) {
+    // On écoute tout clic dans la zone d'entraînement
+    programContainer.addEventListener('change', (e) => {
+        // Si c'est bien une case à cocher (checkbox)
+        if (e.target.type === 'checkbox') {
+            const today = new Date().toISOString().split('T')[0]; // Date du jour (ex: "2023-10-27")
+            const nomExercice = e.target.nextElementSibling.textContent; // Le texte du label (nom de l'exercice)
+
+            // Initialiser le jour s'il n'existe pas
+            if (!historique[today]) historique[today] = { exercices: [] };
+            if (!historique[today].exercices) historique[today].exercices = [];
+
+            if (e.target.checked) {
+                // Si coché, on ajoute à l'historique du jour
+                if (!historique[today].exercices.includes(nomExercice)) {
+                    historique[today].exercices.push(nomExercice);
+                }
+            } else {
+                // Si décoché, on le retire
+                historique[today].exercices = historique[today].exercices.filter(ex => ex !== nomExercice);
+            }
+
+            sauvegarderDonnees("historique", historique);
+            afficherHistorique();
+        }
+    });
+}
+
+// ==========================================
+// 5. LOGIQUE DU PROFIL (Modifiée pour l'historique)
 // ==========================================
 const profilForm = document.getElementById('profilForm');
 const profilDisplay = document.getElementById('profilDisplay');
@@ -177,12 +289,22 @@ if (profilForm) {
         }
 
         sauvegarderDonnees("profil", { apiKey, poids, objectif, precision, sante, materiel });
+        
+        // NOUVEAU : Sauvegarder le poids dans l'historique du jour
+        if (poids) {
+            const today = new Date().toISOString().split('T')[0];
+            if (!historique[today]) historique[today] = { exercices: [] };
+            historique[today].poids = parseFloat(poids);
+            sauvegarderDonnees("historique", historique);
+            afficherHistorique();
+        }
+
         alert("Profil sauvegardé avec succès !");
     });
 }
 
 // ==========================================
-// 5. LOGIQUE FAMILLE & INVENTAIRE
+// 6. LOGIQUE FAMILLE & INVENTAIRE
 // ==========================================
 const familleForm = document.getElementById('familleForm');
 const familleList = document.getElementById('familleList');
@@ -261,7 +383,7 @@ window.modifierAliment = function(index) {
 };
 
 // ==========================================
-// 6. INTÉGRATION API GEMINI (LE CERVEAU)
+// 7. INTÉGRATION API GEMINI (LE CERVEAU)
 // ==========================================
 
 async function appelerGemini(promptText, resultContainerId, isHTML = false) {
