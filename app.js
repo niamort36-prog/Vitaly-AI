@@ -1,9 +1,9 @@
 // ==========================================
 // 1. CONFIGURATION FIREBASE & FIRESTORE
 // ==========================================
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { initializeApp } from "[https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js](https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js)";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "[https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js](https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js)";
+import { getFirestore, doc, setDoc, getDoc } from "[https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js](https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js)";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBnbjzBx8wWH3kp6V8Tw6n7uMhgTrxEal8",
@@ -245,7 +245,6 @@ window.modifierAliment = function(index) {
 // 6. INTÉGRATION API GEMINI (LE CERVEAU)
 // ==========================================
 
-// Fonction générique modifiée : isHTML permet de ne pas casser le design si l'IA renvoie du vrai code
 async function appelerGemini(promptText, resultContainerId, isHTML = false) {
     const apiKey = document.getElementById('inputApiKey').value;
     const container = document.getElementById(resultContainerId);
@@ -256,7 +255,7 @@ async function appelerGemini(promptText, resultContainerId, isHTML = false) {
     }
 
     container.style.display = "block";
-    container.innerHTML = "<p><em>L'IA conçoit votre programme sur mesure... ⏳</em></p>";
+    container.innerHTML = "<p><em>L'IA conçoit votre demande sur mesure... ⏳</em></p>";
 
     try {
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
@@ -273,11 +272,21 @@ async function appelerGemini(promptText, resultContainerId, isHTML = false) {
         let resultatTexte = data.candidates[0].content.parts[0].text;
         
         if (isHTML) {
-            // Nettoyage des balises markdown si l'IA en met autour du code HTML
-            resultatTexte = resultatTexte.replace(/```html\n?/g, '').replace(/```\n?/g, '');
+            // Extraction robuste : on va chercher le bloc HTML même si Gemini ajoute du texte autour
+            const htmlMatch = resultatTexte.match(/```html\s*([\s\S]*?)\s*```/);
+            if (htmlMatch) {
+                resultatTexte = htmlMatch[1]; // Prend uniquement le code
+            } else {
+                // Si Gemini oublie le mot "html" après les backticks
+                const fallbackMatch = resultatTexte.match(/```\s*([\s\S]*?)\s*```/);
+                if (fallbackMatch) {
+                    resultatTexte = fallbackMatch[1];
+                }
+            }
+            // Injection directe dans le DOM
             container.innerHTML = resultatTexte;
         } else {
-            // Formatage classique pour le texte (comme les menus d'alimentation)
+            // Formatage classique pour les menus
             resultatTexte = resultatTexte.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'); 
             resultatTexte = resultatTexte.replace(/\*(.*?)\*/g, '<em>$1</em>'); 
             resultatTexte = resultatTexte.replace(/\n/g, '<br>'); 
@@ -292,7 +301,8 @@ async function appelerGemini(promptText, resultContainerId, isHTML = false) {
 // Bouton Générer Entraînement Sportif
 const btnGenerateWorkout = document.getElementById('btnGenerateWorkout');
 if (btnGenerateWorkout) {
-    btnGenerateWorkout.addEventListener('click', () => {
+    btnGenerateWorkout.addEventListener('click', (e) => {
+        e.preventDefault(); // Empêche un rechargement accidentel
         const poids = document.getElementById('inputPoids').value;
         const objectif = document.getElementById('inputObjectif').value;
         const precision = document.getElementById('inputPrecision').value;
@@ -310,9 +320,8 @@ if (btnGenerateWorkout) {
 
         prompt += `\nMa demande d'entraînement ou d'ajustement est la suivante : ${requeteWorkout || 'Génère-moi un programme sportif adapté.'}\n`;
         
-        // NOUVEAU : On force Gemini à répondre avec NOTRE code HTML
-        prompt += `\nÀ partir de ces informations, crée un programme d'exercices structuré pour 2 semaines (Semaine 1 - Actuelle et Semaine 2 - À venir). `;
-        prompt += `\nIMPORTANT ET OBLIGATOIRE : Tu dois répondre UNIQUEMENT avec du code HTML formaté exactement comme ceci (n'ajoute aucun texte avant ou après, pas de balise markdown) :
+        // Cadrage strict pour obliger Gemini à cracher uniquement notre structure HTML
+        prompt += `\nIMPORTANT ET OBLIGATOIRE : Tu dois répondre EXCLUSIVEMENT avec du code HTML formaté exactement comme ceci. NE METS AUCUN TEXTE d'introduction ou de conclusion, JUSTE LE CODE HTML :
 <div class="week-section">
     <h3>Semaine 1 - Actuelle</h3>
     <div class="card">
@@ -324,7 +333,7 @@ if (btnGenerateWorkout) {
                 <details class="ex-details">
                     <summary>Voir les détails</summary>
                     <p><strong>Description :</strong> Courte description de l'exécution.</p>
-                    <p><a href="https://www.youtube.com/results?search_query=nom+exercice" target="_blank">📺 Voir une vidéo d'exemple sur YouTube</a></p>
+                    <p><a href="[https://www.youtube.com/results?search_query=nom+exercice](https://www.youtube.com/results?search_query=nom+exercice)" target="_blank">📺 Voir une vidéo d'exemple sur YouTube</a></p>
                 </details>
             </li>
             </ul>
@@ -335,15 +344,15 @@ if (btnGenerateWorkout) {
     </div>
 Veille à générer des IDs uniques pour chaque checkbox (ex: gen_s1_mardi_ex2).`;
 
-        // L'appel utilise 'programContainer' et 'true' pour dire que c'est du HTML
         appelerGemini(prompt, 'programContainer', true);
     });
 }
 
-// Bouton Générer Alimentation (Existant)
+// Bouton Générer Alimentation
 const btnGenerateNutrition = document.getElementById('btnGenerateNutrition');
 if (btnGenerateNutrition) {
-    btnGenerateNutrition.addEventListener('click', () => {
+    btnGenerateNutrition.addEventListener('click', (e) => {
+        e.preventDefault();
         const objectif = document.getElementById('inputObjectif').value;
         const precision = document.getElementById('inputPrecision').value;
         const requeteIA = document.getElementById('inputRequeteIA').value;
@@ -363,7 +372,6 @@ if (btnGenerateNutrition) {
         prompt += `\nMa demande spécifique est : ${requeteIA || 'Propose-moi un menu équilibré pour la semaine.'}\n`;
         prompt += `\nÀ partir de ces informations, génère : \n1. Un menu pour chaque jour de la semaine (matin, midi, soir).\n2. Une liste de courses stricte pour compléter ce qui me manque dans mon inventaire afin de réaliser ces repas. Formate ta réponse de manière claire.`;
 
-        // L'appel utilise 'false' car on s'attend à du texte normal
         appelerGemini(prompt, 'menuResult', false);
     });
 }
