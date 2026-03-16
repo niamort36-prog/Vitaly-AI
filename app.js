@@ -1,9 +1,9 @@
 // ==========================================
 // 1. CONFIGURATION FIREBASE & FIRESTORE
 // ==========================================
-import { initializeApp } from "[https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js](https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js)";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "[https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js](https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js)";
-import { getFirestore, doc, setDoc, getDoc } from "[https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js](https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js)";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBnbjzBx8wWH3kp6V8Tw6n7uMhgTrxEal8",
@@ -40,44 +40,54 @@ const userEmailDisplay = document.getElementById('userEmailDisplay');
 
 let isLoginMode = true;
 
-authBtn.addEventListener('click', () => {
-    if (auth.currentUser) signOut(auth); 
-    else authModal.classList.add('active'); 
-});
-closeModal.addEventListener('click', () => authModal.classList.remove('active'));
+if (authBtn) {
+    authBtn.addEventListener('click', () => {
+        if (auth.currentUser) signOut(auth); 
+        else authModal.classList.add('active'); 
+    });
+}
+if (closeModal) closeModal.addEventListener('click', () => authModal.classList.remove('active'));
 
-toggleModeBtn.addEventListener('click', (e) => {
-    e.preventDefault();
-    isLoginMode = !isLoginMode;
-    modalTitle.textContent = isLoginMode ? "Connexion" : "Inscription";
-    authSubmitBtn.textContent = isLoginMode ? "Se connecter" : "S'inscrire";
-    toggleModeBtn.textContent = isLoginMode ? "Pas encore de compte ? S'inscrire" : "Déjà un compte ? Se connecter";
-    authError.textContent = "";
-});
+if (toggleModeBtn) {
+    toggleModeBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        isLoginMode = !isLoginMode;
+        modalTitle.textContent = isLoginMode ? "Connexion" : "Inscription";
+        authSubmitBtn.textContent = isLoginMode ? "Se connecter" : "S'inscrire";
+        toggleModeBtn.textContent = isLoginMode ? "Pas encore de compte ? S'inscrire" : "Déjà un compte ? Se connecter";
+        authError.textContent = "";
+    });
+}
 
-authForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const email = document.getElementById('emailInput').value;
-    const password = document.getElementById('passwordInput').value;
-    authError.textContent = "";
+if (authForm) {
+    authForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const email = document.getElementById('emailInput').value;
+        const password = document.getElementById('passwordInput').value;
+        authError.textContent = "";
 
-    if (isLoginMode) {
-        signInWithEmailAndPassword(auth, email, password)
-            .then(() => { authModal.classList.remove('active'); authForm.reset(); })
-            .catch(error => authError.textContent = "Erreur : Email ou mot de passe incorrect.");
-    } else {
-        createUserWithEmailAndPassword(auth, email, password)
-            .then(() => { authModal.classList.remove('active'); authForm.reset(); })
-            .catch(error => authError.textContent = "Erreur : " + error.message);
-    }
-});
+        if (isLoginMode) {
+            signInWithEmailAndPassword(auth, email, password)
+                .then(() => { authModal.classList.remove('active'); authForm.reset(); })
+                .catch(error => authError.textContent = "Erreur : Email ou mot de passe incorrect.");
+        } else {
+            createUserWithEmailAndPassword(auth, email, password)
+                .then(() => { authModal.classList.remove('active'); authForm.reset(); })
+                .catch(error => authError.textContent = "Erreur : " + error.message);
+        }
+    });
+}
 
 onAuthStateChanged(auth, async (user) => {
     if (user) {
-        authBtn.textContent = "Se déconnecter";
-        authBtn.classList.replace("btn-outline", "btn-secondary");
-        userEmailDisplay.textContent = user.email;
-        userEmailDisplay.style.display = "inline";
+        if (authBtn) {
+            authBtn.textContent = "Se déconnecter";
+            authBtn.classList.replace("btn-outline", "btn-secondary");
+        }
+        if (userEmailDisplay) {
+            userEmailDisplay.textContent = user.email;
+            userEmailDisplay.style.display = "inline";
+        }
 
         const docRef = doc(db, "users", user.uid);
         const docSnap = await getDoc(docRef);
@@ -107,14 +117,18 @@ onAuthStateChanged(auth, async (user) => {
             if(data.inventaire) { inventaire = data.inventaire; afficherFrigo(); }
         }
     } else {
-        authBtn.textContent = "Se connecter";
-        authBtn.classList.replace("btn-secondary", "btn-outline");
-        userEmailDisplay.style.display = "none";
+        if (authBtn) {
+            authBtn.textContent = "Se connecter";
+            authBtn.classList.replace("btn-secondary", "btn-outline");
+        }
+        if (userEmailDisplay) userEmailDisplay.style.display = "none";
         
         famille = []; afficherFamille();
         inventaire = []; afficherFrigo();
-        document.getElementById('profilForm').reset();
-        document.getElementById('profilDisplay').innerHTML = `<h3>Mes Données Actuelles</h3><p><em>Remplissez le formulaire pour afficher vos données ici.</em></p>`;
+        const profilFormEl = document.getElementById('profilForm');
+        if (profilFormEl) profilFormEl.reset();
+        const profilDisplayEl = document.getElementById('profilDisplay');
+        if (profilDisplayEl) profilDisplayEl.innerHTML = `<h3>Mes Données Actuelles</h3><p><em>Remplissez le formulaire pour afficher vos données ici.</em></p>`;
     }
 });
 
@@ -129,7 +143,8 @@ navButtons.forEach(btn => {
         navButtons.forEach(b => b.classList.remove('active'));
         tabContents.forEach(c => c.classList.remove('active'));
         btn.classList.add('active');
-        document.getElementById(btn.getAttribute('data-target')).classList.add('active');
+        const target = document.getElementById(btn.getAttribute('data-target'));
+        if (target) target.classList.add('active');
     });
 });
 
@@ -149,15 +164,17 @@ if (profilForm) {
         const sante = document.getElementById('inputSante').value || 'Aucun signalement';
         const materiel = document.getElementById('inputMateriel').value || 'Aucun matériel';
 
-        profilDisplay.innerHTML = `
-            <h3>Mes Données Actuelles</h3>
-            <p><strong>Clé API :</strong> ${apiKey ? '✅ Enregistrée' : '❌ Manquante'}</p>
-            <p><strong>Poids :</strong> ${poids ? poids + ' kg' : 'Non renseigné'}</p>
-            <p><strong>Objectif :</strong> ${objectif}</p>
-            <p><strong>Précision :</strong> ${precision}</p>
-            <p><strong>Soucis de santé :</strong> ${sante}</p>
-            <p><strong>Matériel :</strong> ${materiel}</p>
-        `;
+        if (profilDisplay) {
+            profilDisplay.innerHTML = `
+                <h3>Mes Données Actuelles</h3>
+                <p><strong>Clé API :</strong> ${apiKey ? '✅ Enregistrée' : '❌ Manquante'}</p>
+                <p><strong>Poids :</strong> ${poids ? poids + ' kg' : 'Non renseigné'}</p>
+                <p><strong>Objectif :</strong> ${objectif}</p>
+                <p><strong>Précision :</strong> ${precision}</p>
+                <p><strong>Soucis de santé :</strong> ${sante}</p>
+                <p><strong>Matériel :</strong> ${materiel}</p>
+            `;
+        }
 
         sauvegarderDonnees("profil", { apiKey, poids, objectif, precision, sante, materiel });
         alert("Profil sauvegardé avec succès !");
@@ -186,6 +203,7 @@ if (familleForm) {
 }
 
 function afficherFamille() {
+    if (!familleList) return;
     if (famille.length === 0) {
         familleList.innerHTML = '<tr><td colspan="3" style="text-align: center; padding: 15px;"><em>Aucun membre ajouté.</em></td></tr>';
         return;
@@ -223,6 +241,7 @@ if (frigoForm) {
 }
 
 function afficherFrigo() {
+    if (!frigoList) return;
     if (inventaire.length === 0) {
         frigoList.innerHTML = '<tr><td colspan="3" style="text-align: center; padding: 15px;"><em>Votre frigo est vide.</em></td></tr>';
         return;
@@ -246,8 +265,11 @@ window.modifierAliment = function(index) {
 // ==========================================
 
 async function appelerGemini(promptText, resultContainerId, isHTML = false) {
-    const apiKey = document.getElementById('inputApiKey').value;
+    const apiKeyInput = document.getElementById('inputApiKey');
+    if (!apiKeyInput) return;
+    const apiKey = apiKeyInput.value;
     const container = document.getElementById(resultContainerId);
+    if (!container) return;
 
     if (!apiKey) {
         alert("Veuillez renseigner et enregistrer votre clé API Gemini dans l'onglet Profil !");
@@ -272,21 +294,17 @@ async function appelerGemini(promptText, resultContainerId, isHTML = false) {
         let resultatTexte = data.candidates[0].content.parts[0].text;
         
         if (isHTML) {
-            // Extraction robuste : on va chercher le bloc HTML même si Gemini ajoute du texte autour
             const htmlMatch = resultatTexte.match(/```html\s*([\s\S]*?)\s*```/);
             if (htmlMatch) {
-                resultatTexte = htmlMatch[1]; // Prend uniquement le code
+                resultatTexte = htmlMatch[1]; 
             } else {
-                // Si Gemini oublie le mot "html" après les backticks
                 const fallbackMatch = resultatTexte.match(/```\s*([\s\S]*?)\s*```/);
                 if (fallbackMatch) {
                     resultatTexte = fallbackMatch[1];
                 }
             }
-            // Injection directe dans le DOM
             container.innerHTML = resultatTexte;
         } else {
-            // Formatage classique pour les menus
             resultatTexte = resultatTexte.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'); 
             resultatTexte = resultatTexte.replace(/\*(.*?)\*/g, '<em>$1</em>'); 
             resultatTexte = resultatTexte.replace(/\n/g, '<br>'); 
@@ -298,11 +316,10 @@ async function appelerGemini(promptText, resultContainerId, isHTML = false) {
     }
 }
 
-// Bouton Générer Entraînement Sportif
 const btnGenerateWorkout = document.getElementById('btnGenerateWorkout');
 if (btnGenerateWorkout) {
     btnGenerateWorkout.addEventListener('click', (e) => {
-        e.preventDefault(); // Empêche un rechargement accidentel
+        e.preventDefault(); 
         const poids = document.getElementById('inputPoids').value;
         const objectif = document.getElementById('inputObjectif').value;
         const precision = document.getElementById('inputPrecision').value;
@@ -310,17 +327,12 @@ if (btnGenerateWorkout) {
         const materiel = document.getElementById('inputMateriel').value;
         const requeteWorkout = document.getElementById('inputRequeteWorkout').value;
 
-        let prompt = `Tu es un coach sportif expert.\n`;
-        prompt += `Voici mon profil actuel :\n`;
-        prompt += `- Poids : ${poids ? poids + ' kg' : 'Non renseigné'}\n`;
-        prompt += `- Objectif principal : ${objectif}\n`;
+        let prompt = `Tu es un coach sportif expert.\nVoici mon profil actuel :\n- Poids : ${poids ? poids + ' kg' : 'Non renseigné'}\n- Objectif principal : ${objectif}\n`;
         if (precision) prompt += `- Précision sur l'objectif : ${precision}\n`;
         if (sante) prompt += `- Soucis de santé / Douleurs à prendre en compte : ${sante}\n`;
         if (materiel) prompt += `- Matériel à disposition : ${materiel}\n`;
 
         prompt += `\nMa demande d'entraînement ou d'ajustement est la suivante : ${requeteWorkout || 'Génère-moi un programme sportif adapté.'}\n`;
-        
-        // Cadrage strict pour obliger Gemini à cracher uniquement notre structure HTML
         prompt += `\nIMPORTANT ET OBLIGATOIRE : Tu dois répondre EXCLUSIVEMENT avec du code HTML formaté exactement comme ceci. NE METS AUCUN TEXTE d'introduction ou de conclusion, JUSTE LE CODE HTML :
 <div class="week-section">
     <h3>Semaine 1 - Actuelle</h3>
@@ -333,22 +345,18 @@ if (btnGenerateWorkout) {
                 <details class="ex-details">
                     <summary>Voir les détails</summary>
                     <p><strong>Description :</strong> Courte description de l'exécution.</p>
-                    <p><a href="[https://www.youtube.com/results?search_query=nom+exercice](https://www.youtube.com/results?search_query=nom+exercice)" target="_blank">📺 Voir une vidéo d'exemple sur YouTube</a></p>
+                    <p><a href="https://www.youtube.com/results?search_query=nom+exercice" target="_blank">📺 Voir une vidéo d'exemple sur YouTube</a></p>
                 </details>
             </li>
-            </ul>
+        </ul>
     </div>
-    </div>
-<div class="week-section">
-    <h3>Semaine 2 - À venir</h3>
-    </div>
+</div>
 Veille à générer des IDs uniques pour chaque checkbox (ex: gen_s1_mardi_ex2).`;
 
         appelerGemini(prompt, 'programContainer', true);
     });
 }
 
-// Bouton Générer Alimentation
 const btnGenerateNutrition = document.getElementById('btnGenerateNutrition');
 if (btnGenerateNutrition) {
     btnGenerateNutrition.addEventListener('click', (e) => {
