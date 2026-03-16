@@ -68,28 +68,30 @@
 
         <section id="workout" class="tab-content">
             <h2>Mon Programme</h2>
-            <div class="week-section">
-                <h3>Semaine 1 - Actuelle</h3>
-                <div class="card">
-                    <h4>Lundi</h4>
-                    <ul class="checklist">
-                        <li>
-                            <input type="checkbox" id="s1j1_ex1"> <label for="s1j1_ex1">Échauffement articulaire (5 min)</label>
-                            <details class="ex-details">
-                                <summary>Voir les détails</summary>
-                                <p><strong>Description :</strong> Rotations douces de la tête, des épaules, des poignets, du bassin et des chevilles.</p>
-                                <p><a href="https://www.youtube.com/results?search_query=echauffement+articulaire+complet" target="_blank">📺 Vidéo YouTube</a></p>
-                            </details>
-                        </li>
-                    </ul>
+            
+            <div id="programContainer">
+                <div class="week-section">
+                    <h3>Semaine 1 - Actuelle</h3>
+                    <div class="card">
+                        <h4>Lundi</h4>
+                        <ul class="checklist">
+                            <li>
+                                <input type="checkbox" id="s1j1_ex1"> <label for="s1j1_ex1">Échauffement articulaire (5 min)</label>
+                                <details class="ex-details">
+                                    <summary>Voir les détails</summary>
+                                    <p><strong>Description :</strong> Rotations douces de la tête, des épaules, des poignets, du bassin et des chevilles.</p>
+                                    <p><a href="https://www.youtube.com/results?search_query=echauffement+articulaire+complet" target="_blank">📺 Vidéo YouTube</a></p>
+                                </details>
+                            </li>
+                        </ul>
+                    </div>
                 </div>
             </div>
+
             <div class="modification-request">
                 <textarea id="inputRequeteWorkout" placeholder="Le programme était trop dur ? Un imprévu ? Demandez une modification à l'IA..."></textarea>
                 <button id="btnGenerateWorkout" class="btn-secondary">Ajuster le programme avec l'IA</button>
             </div>
-            <div id="workoutResult" class="menu-display card" style="margin-top: 20px; display: none;">
-                </div>
         </section>
 
         <section id="nutrition" class="tab-content">
