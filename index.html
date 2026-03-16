@@ -42,6 +42,9 @@
             <h2>Mon Profil Santé</h2>
             <div class="profil-layout">
                 <form id="profilForm">
+                    <label style="color: var(--primary-color);">🔑 Clé API Gemini : <input type="password" id="inputApiKey" placeholder="Collez votre clé API Google Gemini ici"></label>
+                    <hr style="border: 1px solid #EEE; margin: 15px 0;">
+
                     <label>Poids (kg) : <input type="number" id="inputPoids" placeholder="Ex: 75"></label>
                     <label>Objectif : 
                         <select id="inputObjectif">
@@ -82,9 +85,11 @@
                 </div>
             </div>
             <div class="modification-request">
-                <textarea placeholder="Le programme était trop dur ? Un imprévu ? Demandez une modification à l'IA..."></textarea>
-                <button class="btn-secondary">Ajuster le programme</button>
+                <textarea id="inputRequeteWorkout" placeholder="Le programme était trop dur ? Un imprévu ? Demandez une modification à l'IA..."></textarea>
+                <button id="btnGenerateWorkout" class="btn-secondary">Ajuster le programme avec l'IA</button>
             </div>
+            <div id="workoutResult" class="menu-display card" style="margin-top: 20px; display: none;">
+                </div>
         </section>
 
         <section id="nutrition" class="tab-content">
@@ -120,7 +125,7 @@
                     </form>
                     <h3 style="margin-top: 20px;">Générateur de Menus & Courses</h3>
                     <label>Demande spécifique pour l'IA : <textarea id="inputRequeteIA" placeholder="Ex: Repas d'été, utiliser le frigo en priorité..."></textarea></label>
-                    <button class="btn-secondary" style="margin-top: 10px;">Générer les menus et la liste de courses</button>
+                    <button id="btnGenerateNutrition" class="btn-secondary" style="margin-top: 10px;">Générer les menus et la liste de courses</button>
                 </div>
                 <div class="card" style="flex: 1; min-width: 280px; align-self: flex-start;">
                     <h3>Mon Inventaire</h3>
