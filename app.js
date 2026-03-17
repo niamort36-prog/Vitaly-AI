@@ -26,6 +26,16 @@ async function sauvegarderDonnees(champ, donnees) {
 }
 
 // ==========================================
+// Remplacer "Lundi" par la vraie date dans la vue par défaut
+// ==========================================
+const h4Placeholder = document.querySelector('#programContainer h4');
+if (h4Placeholder && h4Placeholder.textContent.includes('Lundi')) {
+    const optionsDate = { weekday: 'long', day: 'numeric', month: 'long' };
+    const dateStr = new Date().toLocaleDateString('fr-FR', optionsDate);
+    h4Placeholder.textContent = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
+}
+
+// ==========================================
 // 2. GESTION DE L'AUTHENTIFICATION
 // ==========================================
 const authBtn = document.getElementById('authBtn');
@@ -115,7 +125,6 @@ onAuthStateChanged(auth, async (user) => {
 
             if(data.famille) { famille = data.famille; afficherFamille(); }
             if(data.inventaire) { inventaire = data.inventaire; afficherFrigo(); }
-            // NOUVEAU : Récupération de l'historique
             if(data.historique) { historique = data.historique; afficherHistorique(); }
         }
     } else {
@@ -149,7 +158,6 @@ navButtons.forEach(btn => {
         const target = document.getElementById(btn.getAttribute('data-target'));
         if (target) target.classList.add('active');
         
-        // NOUVEAU : Redessiner le graphique si on clique sur l'onglet Historique
         if(btn.getAttribute('data-target') === 'history') {
             afficherHistorique();
         }
@@ -157,18 +165,16 @@ navButtons.forEach(btn => {
 });
 
 // ==========================================
-// NOUVEAU : 4. LOGIQUE DE L'HISTORIQUE (Poids & Exercices)
+// 4. LOGIQUE DE L'HISTORIQUE (Poids & Exercices)
 // ==========================================
-let historique = {}; // Format: { "YYYY-MM-DD": { poids: 75, exercices: ["Pompes", "Gainage"] } }
-let weightChartInstance = null; // Pour stocker le graphique Chart.js
+let historique = {}; 
+let weightChartInstance = null; 
 
 function afficherHistorique() {
-    const dates = Object.keys(historique).sort(); // Trie les dates par ordre chronologique
+    const dates = Object.keys(historique).sort(); 
     
-    // 1. Mise à jour du graphique de poids
     const ctx = document.getElementById('weightChart');
     if (ctx) {
-        // Préparer les données
         const labels = [];
         const dataPoids = [];
         
@@ -179,7 +185,6 @@ function afficherHistorique() {
             }
         });
 
-        // Si un graphique existe déjà, on le détruit avant de le redessiner
         if (weightChartInstance) {
             weightChartInstance.destroy();
         }
@@ -195,19 +200,18 @@ function afficherHistorique() {
                     backgroundColor: 'rgba(46, 204, 113, 0.2)',
                     borderWidth: 2,
                     fill: true,
-                    tension: 0.3 // Courbe légèrement arrondie
+                    tension: 0.3 
                 }]
             },
             options: {
                 responsive: true,
                 scales: {
-                    y: { beginAtZero: false } // Pour ne pas écraser la courbe
+                    y: { beginAtZero: false } 
                 }
             }
         });
     }
 
-    // 2. Mise à jour de la liste des exercices validés
     const listContainer = document.getElementById('exerciseHistoryList');
     if (listContainer) {
         if (dates.length === 0) {
@@ -216,7 +220,6 @@ function afficherHistorique() {
         }
 
         let html = '';
-        // On affiche du plus récent au plus ancien
         [...dates].reverse().forEach(date => {
             const exos = historique[date].exercices || [];
             if (exos.length > 0) {
@@ -230,27 +233,21 @@ function afficherHistorique() {
     }
 }
 
-// ÉCOUTEUR GLOBAL POUR LES EXERCICES COCHÉS
 const programContainer = document.getElementById('programContainer');
 if (programContainer) {
-    // On écoute tout clic dans la zone d'entraînement
     programContainer.addEventListener('change', (e) => {
-        // Si c'est bien une case à cocher (checkbox)
         if (e.target.type === 'checkbox') {
-            const today = new Date().toISOString().split('T')[0]; // Date du jour (ex: "2023-10-27")
-            const nomExercice = e.target.nextElementSibling.textContent; // Le texte du label (nom de l'exercice)
+            const today = new Date().toISOString().split('T')[0]; 
+            const nomExercice = e.target.nextElementSibling.textContent; 
 
-            // Initialiser le jour s'il n'existe pas
             if (!historique[today]) historique[today] = { exercices: [] };
             if (!historique[today].exercices) historique[today].exercices = [];
 
             if (e.target.checked) {
-                // Si coché, on ajoute à l'historique du jour
                 if (!historique[today].exercices.includes(nomExercice)) {
                     historique[today].exercices.push(nomExercice);
                 }
             } else {
-                // Si décoché, on le retire
                 historique[today].exercices = historique[today].exercices.filter(ex => ex !== nomExercice);
             }
 
@@ -261,7 +258,7 @@ if (programContainer) {
 }
 
 // ==========================================
-// 5. LOGIQUE DU PROFIL (Modifiée pour l'historique)
+// 5. LOGIQUE DU PROFIL 
 // ==========================================
 const profilForm = document.getElementById('profilForm');
 const profilDisplay = document.getElementById('profilDisplay');
@@ -290,7 +287,6 @@ if (profilForm) {
 
         sauvegarderDonnees("profil", { apiKey, poids, objectif, precision, sante, materiel });
         
-        // NOUVEAU : Sauvegarder le poids dans l'historique du jour
         if (poids) {
             const today = new Date().toISOString().split('T')[0];
             if (!historique[today]) historique[today] = { exercices: [] };
@@ -449,21 +445,27 @@ if (btnGenerateWorkout) {
         const materiel = document.getElementById('inputMateriel').value;
         const requeteWorkout = document.getElementById('inputRequeteWorkout').value;
 
-        let prompt = `Tu es un coach sportif expert.\nVoici mon profil actuel :\n- Poids : ${poids ? poids + ' kg' : 'Non renseigné'}\n- Objectif principal : ${objectif}\n`;
+        // Préparation de la date du jour
+        const optionsDate = { weekday: 'long', day: 'numeric', month: 'long' };
+        const dateAujourdHui = new Date().toLocaleDateString('fr-FR', optionsDate);
+        const dateAujourdHuiMaj = dateAujourdHui.charAt(0).toUpperCase() + dateAujourdHui.slice(1);
+
+        let prompt = `Tu es un coach sportif expert.\nAujourd'hui nous sommes le ${dateAujourdHuiMaj}.\nVoici mon profil actuel :\n- Poids : ${poids ? poids + ' kg' : 'Non renseigné'}\n- Objectif principal : ${objectif}\n`;
         if (precision) prompt += `- Précision sur l'objectif : ${precision}\n`;
         if (sante) prompt += `- Soucis de santé / Douleurs à prendre en compte : ${sante}\n`;
         if (materiel) prompt += `- Matériel à disposition : ${materiel}\n`;
 
         prompt += `\nMa demande d'entraînement ou d'ajustement est la suivante : ${requeteWorkout || 'Génère-moi un programme sportif adapté.'}\n`;
-        prompt += `\nIMPORTANT ET OBLIGATOIRE : Tu dois répondre EXCLUSIVEMENT avec du code HTML formaté exactement comme ceci. NE METS AUCUN TEXTE d'introduction ou de conclusion, JUSTE LE CODE HTML :
+        
+        prompt += `\nIMPORTANT ET OBLIGATOIRE : Tu dois répondre EXCLUSIVEMENT avec du code HTML formaté exactement comme ceci. NE METS AUCUN TEXTE d'introduction ou de conclusion, JUSTE LE CODE HTML. Commence le programme à partir d'aujourd'hui et affiche le jour ET la date exacte dans la balise <h4> (par exemple <h4>${dateAujourdHuiMaj}</h4>) pour chaque jour généré :
 <div class="week-section">
     <h3>Semaine 1 - Actuelle</h3>
     <div class="card">
-        <h4>Lundi</h4>
+        <h4>${dateAujourdHuiMaj}</h4>
         <ul class="checklist">
             <li>
-                <input type="checkbox" id="gen_s1_lundi_ex1"> 
-                <label for="gen_s1_lundi_ex1">Nom de l'exercice (Séries x Répétitions)</label>
+                <input type="checkbox" id="gen_s1_j1_ex1"> 
+                <label for="gen_s1_j1_ex1">Nom de l'exercice (Séries x Répétitions)</label>
                 <details class="ex-details">
                     <summary>Voir les détails</summary>
                     <p><strong>Description :</strong> Courte description de l'exécution.</p>
@@ -473,7 +475,7 @@ if (btnGenerateWorkout) {
         </ul>
     </div>
 </div>
-Veille à générer des IDs uniques pour chaque checkbox (ex: gen_s1_mardi_ex2).`;
+Veille à générer des IDs uniques pour chaque checkbox (ex: gen_s1_j2_ex2).`;
 
         appelerGemini(prompt, 'programContainer', true);
     });
