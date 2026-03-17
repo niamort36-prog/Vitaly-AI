@@ -126,6 +126,16 @@ onAuthStateChanged(auth, async (user) => {
             if(data.famille) { famille = data.famille; afficherFamille(); }
             if(data.inventaire) { inventaire = data.inventaire; afficherFrigo(); }
             if(data.historique) { historique = data.historique; afficherHistorique(); }
+            
+            // NOUVEAU : Récupération des programmes et menus générés
+            if(data.workoutProgram) {
+                const pc = document.getElementById('programContainer');
+                if(pc) pc.innerHTML = data.workoutProgram;
+            }
+            if(data.nutritionMenu) {
+                const mr = document.getElementById('menuResult');
+                if(mr) mr.innerHTML = data.nutritionMenu;
+            }
         }
     } else {
         if (authBtn) {
@@ -141,6 +151,36 @@ onAuthStateChanged(auth, async (user) => {
         if (profilFormEl) profilFormEl.reset();
         const profilDisplayEl = document.getElementById('profilDisplay');
         if (profilDisplayEl) profilDisplayEl.innerHTML = `<h3>Mes Données Actuelles</h3><p><em>Remplissez le formulaire pour afficher vos données ici.</em></p>`;
+        
+        // NOUVEAU : On réinitialise l'affichage de l'entraînement et des menus
+        const pc = document.getElementById('programContainer');
+        if (pc) {
+            pc.innerHTML = `
+                <div class="week-section">
+                    <h3>Semaine 1 - Actuelle</h3>
+                    <div class="card">
+                        <h4>Lundi</h4>
+                        <ul class="checklist">
+                            <li>
+                                <input type="checkbox" id="s1j1_ex1"> <label for="s1j1_ex1">Échauffement articulaire (5 min)</label>
+                                <details class="ex-details">
+                                    <summary>Voir les détails</summary>
+                                    <p><strong>Description :</strong> Rotations douces de la tête, des épaules, des poignets, du bassin et des chevilles.</p>
+                                    <p><a href="https://www.youtube.com/results?search_query=echauffement+articulaire+complet" target="_blank">📺 Vidéo YouTube</a></p>
+                                </details>
+                            </li>
+                        </ul>
+                    </div>
+                </div>`;
+            const h4 = pc.querySelector('h4');
+            if (h4 && h4.textContent.includes('Lundi')) {
+                const optionsDate = { weekday: 'long', day: 'numeric', month: 'long' };
+                const dateStr = new Date().toLocaleDateString('fr-FR', optionsDate);
+                h4.textContent = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
+            }
+        }
+        const mr = document.getElementById('menuResult');
+        if (mr) mr.innerHTML = `<p><em>Vos menus de la semaine et votre liste de courses s'afficheront ici...</em></p>`;
     }
 });
 
@@ -244,14 +284,18 @@ if (programContainer) {
             if (!historique[today].exercices) historique[today].exercices = [];
 
             if (e.target.checked) {
+                e.target.setAttribute('checked', 'checked'); // Fixer l'attribut dans le HTML pour la sauvegarde
                 if (!historique[today].exercices.includes(nomExercice)) {
                     historique[today].exercices.push(nomExercice);
                 }
             } else {
+                e.target.removeAttribute('checked'); // Retirer l'attribut
                 historique[today].exercices = historique[today].exercices.filter(ex => ex !== nomExercice);
             }
 
             sauvegarderDonnees("historique", historique);
+            // NOUVEAU : Sauvegarde automatique du HTML mis à jour pour conserver les cases cochées
+            sauvegarderDonnees("workoutProgram", programContainer.innerHTML);
             afficherHistorique();
         }
     });
@@ -382,7 +426,8 @@ window.modifierAliment = function(index) {
 // 7. INTÉGRATION API GEMINI (LE CERVEAU)
 // ==========================================
 
-async function appelerGemini(promptText, resultContainerId, isHTML = false) {
+// NOUVEAU : Ajout d'un argument storageKey pour sauvegarder le résultat automatiquement
+async function appelerGemini(promptText, resultContainerId, isHTML = false, storageKey = null) {
     const apiKeyInput = document.getElementById('inputApiKey');
     if (!apiKeyInput) return;
     const apiKey = apiKeyInput.value;
@@ -426,7 +471,15 @@ async function appelerGemini(promptText, resultContainerId, isHTML = false) {
             resultatTexte = resultatTexte.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'); 
             resultatTexte = resultatTexte.replace(/\*(.*?)\*/g, '<em>$1</em>'); 
             resultatTexte = resultatTexte.replace(/\n/g, '<br>'); 
-            container.innerHTML = `<div style="line-height: 1.6; padding: 10px;">${resultatTexte}</div>`;
+            
+            // On enveloppe le tout pour garder la mise en forme
+            resultatTexte = `<div style="line-height: 1.6; padding: 10px;">${resultatTexte}</div>`;
+            container.innerHTML = resultatTexte;
+        }
+
+        // NOUVEAU : Sauvegarde du texte ou HTML généré
+        if (storageKey) {
+            sauvegarderDonnees(storageKey, resultatTexte);
         }
 
     } catch (error) {
@@ -445,7 +498,6 @@ if (btnGenerateWorkout) {
         const materiel = document.getElementById('inputMateriel').value;
         const requeteWorkout = document.getElementById('inputRequeteWorkout').value;
 
-        // Préparation de la date du jour
         const optionsDate = { weekday: 'long', day: 'numeric', month: 'long' };
         const dateAujourdHui = new Date().toLocaleDateString('fr-FR', optionsDate);
         const dateAujourdHuiMaj = dateAujourdHui.charAt(0).toUpperCase() + dateAujourdHui.slice(1);
@@ -477,7 +529,8 @@ if (btnGenerateWorkout) {
 </div>
 Veille à générer des IDs uniques pour chaque checkbox (ex: gen_s1_j2_ex2).`;
 
-        appelerGemini(prompt, 'programContainer', true);
+        // NOUVEAU : On passe 'workoutProgram' comme clé de stockage
+        appelerGemini(prompt, 'programContainer', true, 'workoutProgram');
     });
 }
 
@@ -504,6 +557,7 @@ if (btnGenerateNutrition) {
         prompt += `\nMa demande spécifique est : ${requeteIA || 'Propose-moi un menu équilibré pour la semaine.'}\n`;
         prompt += `\nÀ partir de ces informations, génère : \n1. Un menu pour chaque jour de la semaine (matin, midi, soir).\n2. Une liste de courses stricte pour compléter ce qui me manque dans mon inventaire afin de réaliser ces repas. Formate ta réponse de manière claire.`;
 
-        appelerGemini(prompt, 'menuResult', false);
+        // NOUVEAU : On passe 'nutritionMenu' comme clé de stockage
+        appelerGemini(prompt, 'menuResult', false, 'nutritionMenu');
     });
 }
