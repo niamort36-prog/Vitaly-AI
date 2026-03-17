@@ -25,9 +25,6 @@ async function sauvegarderDonnees(champ, donnees) {
     }
 }
 
-// ==========================================
-// Remplacer "Lundi" par la vraie date dans la vue par défaut
-// ==========================================
 const h4Placeholder = document.querySelector('#programContainer h4');
 if (h4Placeholder && h4Placeholder.textContent.includes('Lundi')) {
     const optionsDate = { weekday: 'long', day: 'numeric', month: 'long' };
@@ -127,7 +124,6 @@ onAuthStateChanged(auth, async (user) => {
             if(data.inventaire) { inventaire = data.inventaire; afficherFrigo(); }
             if(data.historique) { historique = data.historique; afficherHistorique(); }
             
-            // NOUVEAU : Récupération des programmes et menus générés
             if(data.workoutProgram) {
                 const pc = document.getElementById('programContainer');
                 if(pc) pc.innerHTML = data.workoutProgram;
@@ -152,7 +148,6 @@ onAuthStateChanged(auth, async (user) => {
         const profilDisplayEl = document.getElementById('profilDisplay');
         if (profilDisplayEl) profilDisplayEl.innerHTML = `<h3>Mes Données Actuelles</h3><p><em>Remplissez le formulaire pour afficher vos données ici.</em></p>`;
         
-        // NOUVEAU : On réinitialise l'affichage de l'entraînement et des menus
         const pc = document.getElementById('programContainer');
         if (pc) {
             pc.innerHTML = `
@@ -205,22 +200,90 @@ navButtons.forEach(btn => {
 });
 
 // ==========================================
-// 4. LOGIQUE DE L'HISTORIQUE (Poids & Exercices)
+// 4. LOGIQUE DE L'HISTORIQUE (Navigation & Filtres)
 // ==========================================
 let historique = {}; 
 let weightChartInstance = null; 
 
+// Variables pour la navigation dans le temps
+let currentViewMode = 'month'; // 'week', 'month', 'year', 'all'
+let currentDateRef = new Date(); // Date de référence pour l'affichage
+
+// Outil pour convertir proprement en string locale YYYY-MM-DD
+function toLocalISOString(date) {
+    const offset = date.getTimezoneOffset() * 60000;
+    return (new Date(date - offset)).toISOString().split('T')[0];
+}
+
+// Calcule la date de début et de fin selon le mode choisi
+function getPeriodRange(mode, refDate) {
+    const start = new Date(refDate);
+    const end = new Date(refDate);
+    if (mode === 'week') {
+        const day = start.getDay() || 7; 
+        start.setDate(start.getDate() - day + 1); 
+        start.setHours(0,0,0,0);
+        end.setDate(start.getDate() + 6); 
+        end.setHours(23,59,59,999);
+    } else if (mode === 'month') {
+        start.setDate(1);
+        start.setHours(0,0,0,0);
+        end.setMonth(end.getMonth() + 1, 0);
+        end.setHours(23,59,59,999);
+    } else if (mode === 'year') {
+        start.setMonth(0, 1);
+        start.setHours(0,0,0,0);
+        end.setMonth(11, 31);
+        end.setHours(23,59,59,999);
+    }
+    return { start, end };
+}
+
+// Met à jour le texte qui indique la période (ex: "Mars 2026")
+function updatePeriodLabel() {
+    const labelEl = document.getElementById('historyPeriodLabel');
+    if (!labelEl) return;
+    if (currentViewMode === 'all') {
+        labelEl.textContent = "Historique Complet";
+        return;
+    }
+    const { start, end } = getPeriodRange(currentViewMode, currentDateRef);
+    if (currentViewMode === 'week') {
+        labelEl.textContent = `Du ${start.toLocaleDateString('fr-FR')} au ${end.toLocaleDateString('fr-FR')}`;
+    } else if (currentViewMode === 'month') {
+        let text = start.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+        labelEl.textContent = text.charAt(0).toUpperCase() + text.slice(1);
+    } else if (currentViewMode === 'year') {
+        labelEl.textContent = start.getFullYear();
+    }
+}
+
+// Fonction principale pour dessiner l'historique filtré
 function afficherHistorique() {
-    const dates = Object.keys(historique).sort(); 
+    const allDates = Object.keys(historique).sort(); 
+    let filteredDates = allDates;
+
+    // Filtrer les dates en fonction du mode (sauf si "all")
+    if (currentViewMode !== 'all') {
+        const { start, end } = getPeriodRange(currentViewMode, currentDateRef);
+        const startStr = toLocalISOString(start);
+        const endStr = toLocalISOString(end);
+        filteredDates = allDates.filter(d => d >= startStr && d <= endStr);
+    }
+
+    updatePeriodLabel();
     
+    // Graphique
     const ctx = document.getElementById('weightChart');
     if (ctx) {
         const labels = [];
         const dataPoids = [];
         
-        dates.forEach(date => {
+        filteredDates.forEach(date => {
             if (historique[date].poids) {
-                labels.push(date);
+                // Pour faire plus joli, on affiche "JJ/MM" au lieu de "YYYY-MM-DD"
+                const parts = date.split('-');
+                labels.push(`${parts[2]}/${parts[1]}`);
                 dataPoids.push(historique[date].poids);
             }
         });
@@ -252,49 +315,85 @@ function afficherHistorique() {
         });
     }
 
+    // Liste des exercices
     const listContainer = document.getElementById('exerciseHistoryList');
     if (listContainer) {
-        if (dates.length === 0) {
-            listContainer.innerHTML = '<p><em>Aucun historique pour le moment.</em></p>';
+        if (filteredDates.length === 0) {
+            listContainer.innerHTML = '<p><em>Aucun historique pour cette période.</em></p>';
             return;
         }
 
         let html = '';
-        [...dates].reverse().forEach(date => {
+        [...filteredDates].reverse().forEach(date => {
             const exos = historique[date].exercices || [];
             if (exos.length > 0) {
-                html += `<h4 style="color: var(--primary-color); border-bottom: 1px solid #eee; padding-bottom: 5px;">📅 ${date}</h4><ul class="checklist">`;
+                // Convertit YYYY-MM-DD en vraie date FR
+                const dateObj = new Date(date);
+                let dateFr = dateObj.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+                dateFr = dateFr.charAt(0).toUpperCase() + dateFr.slice(1);
+
+                html += `<h4 style="color: var(--primary-color); border-bottom: 1px solid #eee; padding-bottom: 5px;">📅 ${dateFr}</h4><ul class="checklist">`;
                 exos.forEach(ex => html += `<li>✅ ${ex}</li>`);
                 html += `</ul>`;
             }
         });
         
-        listContainer.innerHTML = html || '<p><em>Aucun exercice validé pour le moment.</em></p>';
+        listContainer.innerHTML = html || '<p><em>Aucun exercice validé pour cette période.</em></p>';
     }
+}
+
+// Événements pour les boutons Précédent/Suivant et le Menu déroulant
+const btnPrevPeriod = document.getElementById('btnPrevPeriod');
+const btnNextPeriod = document.getElementById('btnNextPeriod');
+const historyViewMode = document.getElementById('historyViewMode');
+
+if (historyViewMode) {
+    historyViewMode.addEventListener('change', (e) => {
+        currentViewMode = e.target.value;
+        currentDateRef = new Date(); // Remet à aujourd'hui quand on change de vue
+        afficherHistorique();
+    });
+}
+
+if (btnPrevPeriod) {
+    btnPrevPeriod.addEventListener('click', () => {
+        if (currentViewMode === 'week') currentDateRef.setDate(currentDateRef.getDate() - 7);
+        else if (currentViewMode === 'month') currentDateRef.setMonth(currentDateRef.getMonth() - 1);
+        else if (currentViewMode === 'year') currentDateRef.setFullYear(currentDateRef.getFullYear() - 1);
+        afficherHistorique();
+    });
+}
+
+if (btnNextPeriod) {
+    btnNextPeriod.addEventListener('click', () => {
+        if (currentViewMode === 'week') currentDateRef.setDate(currentDateRef.getDate() + 7);
+        else if (currentViewMode === 'month') currentDateRef.setMonth(currentDateRef.getMonth() + 1);
+        else if (currentViewMode === 'year') currentDateRef.setFullYear(currentDateRef.getFullYear() + 1);
+        afficherHistorique();
+    });
 }
 
 const programContainer = document.getElementById('programContainer');
 if (programContainer) {
     programContainer.addEventListener('change', (e) => {
         if (e.target.type === 'checkbox') {
-            const today = new Date().toISOString().split('T')[0]; 
+            const today = toLocalISOString(new Date()); 
             const nomExercice = e.target.nextElementSibling.textContent; 
 
             if (!historique[today]) historique[today] = { exercices: [] };
             if (!historique[today].exercices) historique[today].exercices = [];
 
             if (e.target.checked) {
-                e.target.setAttribute('checked', 'checked'); // Fixer l'attribut dans le HTML pour la sauvegarde
+                e.target.setAttribute('checked', 'checked'); 
                 if (!historique[today].exercices.includes(nomExercice)) {
                     historique[today].exercices.push(nomExercice);
                 }
             } else {
-                e.target.removeAttribute('checked'); // Retirer l'attribut
+                e.target.removeAttribute('checked'); 
                 historique[today].exercices = historique[today].exercices.filter(ex => ex !== nomExercice);
             }
 
             sauvegarderDonnees("historique", historique);
-            // NOUVEAU : Sauvegarde automatique du HTML mis à jour pour conserver les cases cochées
             sauvegarderDonnees("workoutProgram", programContainer.innerHTML);
             afficherHistorique();
         }
@@ -332,7 +431,7 @@ if (profilForm) {
         sauvegarderDonnees("profil", { apiKey, poids, objectif, precision, sante, materiel });
         
         if (poids) {
-            const today = new Date().toISOString().split('T')[0];
+            const today = toLocalISOString(new Date());
             if (!historique[today]) historique[today] = { exercices: [] };
             historique[today].poids = parseFloat(poids);
             sauvegarderDonnees("historique", historique);
@@ -426,7 +525,6 @@ window.modifierAliment = function(index) {
 // 7. INTÉGRATION API GEMINI (LE CERVEAU)
 // ==========================================
 
-// NOUVEAU : Ajout d'un argument storageKey pour sauvegarder le résultat automatiquement
 async function appelerGemini(promptText, resultContainerId, isHTML = false, storageKey = null) {
     const apiKeyInput = document.getElementById('inputApiKey');
     if (!apiKeyInput) return;
@@ -472,12 +570,10 @@ async function appelerGemini(promptText, resultContainerId, isHTML = false, stor
             resultatTexte = resultatTexte.replace(/\*(.*?)\*/g, '<em>$1</em>'); 
             resultatTexte = resultatTexte.replace(/\n/g, '<br>'); 
             
-            // On enveloppe le tout pour garder la mise en forme
             resultatTexte = `<div style="line-height: 1.6; padding: 10px;">${resultatTexte}</div>`;
             container.innerHTML = resultatTexte;
         }
 
-        // NOUVEAU : Sauvegarde du texte ou HTML généré
         if (storageKey) {
             sauvegarderDonnees(storageKey, resultatTexte);
         }
@@ -529,7 +625,6 @@ if (btnGenerateWorkout) {
 </div>
 Veille à générer des IDs uniques pour chaque checkbox (ex: gen_s1_j2_ex2).`;
 
-        // NOUVEAU : On passe 'workoutProgram' comme clé de stockage
         appelerGemini(prompt, 'programContainer', true, 'workoutProgram');
     });
 }
@@ -557,7 +652,6 @@ if (btnGenerateNutrition) {
         prompt += `\nMa demande spécifique est : ${requeteIA || 'Propose-moi un menu équilibré pour la semaine.'}\n`;
         prompt += `\nÀ partir de ces informations, génère : \n1. Un menu pour chaque jour de la semaine (matin, midi, soir).\n2. Une liste de courses stricte pour compléter ce qui me manque dans mon inventaire afin de réaliser ces repas. Formate ta réponse de manière claire.`;
 
-        // NOUVEAU : On passe 'nutritionMenu' comme clé de stockage
         appelerGemini(prompt, 'menuResult', false, 'nutritionMenu');
     });
 }
