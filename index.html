@@ -148,6 +148,20 @@
         <section id="history" class="tab-content">
             <h2>Mon Évolution & Historique</h2>
             
+            <div class="card" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background-color: #F0F4F8;">
+                <button id="btnPrevPeriod" class="btn-icon" style="font-size: 1.5rem;" title="Précédent">⬅️</button>
+                <div style="text-align: center;">
+                    <select id="historyViewMode" style="margin-bottom: 5px; width: auto; display: inline-block; border-color: var(--primary-color);">
+                        <option value="week">Semaine</option>
+                        <option value="month" selected>Mois</option>
+                        <option value="year">Année</option>
+                        <option value="all">Tout l'historique</option>
+                    </select>
+                    <div id="historyPeriodLabel" style="font-weight: bold; color: var(--primary-color); font-size: 1.1rem;">...</div>
+                </div>
+                <button id="btnNextPeriod" class="btn-icon" style="font-size: 1.5rem;" title="Suivant">➡️</button>
+            </div>
+
             <div class="card">
                 <h3>Courbe de Poids</h3>
                 <canvas id="weightChart"></canvas>
